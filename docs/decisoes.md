@@ -178,3 +178,72 @@ identificar a origem de um problema.
 **Preparação.** O campo `anotacoes.texto` já é o material de entrada. Quando a
 geração entrar, será uma Edge Function do Supabase — a chave da API não pode
 ficar no frontend.
+
+---
+
+## 11. Turma como pré-requisito, não como campo opcional
+
+**Contexto.** A primeira versão simplificada não tinha turmas. Ao usar com
+mais de uma turma, a lista única com todas as crianças ficava longa demais
+para encontrar alguém rapidamente.
+
+**Decisão.** Turma é obrigatória: a tela inicial lista as turmas, as crianças
+ficam dentro delas, e não existe caminho para cadastrar criança antes de
+criar a primeira turma.
+
+**Por que não deixar opcional.** Campo opcional de agrupamento tende a ficar
+vazio, e aí a funcionalidade não resolve o problema que motivou sua criação.
+Sendo pré-requisito, a organização acontece desde o primeiro cadastro.
+
+**Compatibilidade.** As crianças cadastradas antes da mudança aparecem em um
+grupo "Sem turma", que some assim que todas forem movidas. Não há perda de
+dados nem bloqueio de acesso ao que já existia.
+
+---
+
+## 12. Matrícula opcional com sinalização visível
+
+**Contexto.** A matrícula foi pensada como obrigatória, para dar um
+identificador estável independente do nome.
+
+**Decisão.** Opcional no cadastro, com etiqueta visível em cada criança que
+está sem, e um contador no topo da lista.
+
+**Por que mudou.** Campo obrigatório que a pessoa não consegue preencher na
+hora produz dado inventado — pior que dado ausente, porque parece válido.
+A etiqueta cria a lembrança sem travar o cadastro.
+
+**Detalhe de implementação.** O campo vazio grava `null`, não string vazia.
+O índice único trataria `''` como valor, e a segunda criança sem matrícula
+falharia com erro de duplicata.
+
+---
+
+## 13. Confirmação por digitação em ações destrutivas
+
+**Decisão.** Excluir turma ou criança exige digitar a palavra `EXCLUIR`.
+
+**Motivo.** O `confirm()` do navegador é descartado por reflexo, e em celular
+o botão fica a um toque do dedo. Digitar sete letras não acontece por acidente.
+
+**Por que uma palavra fixa e não o nome do item.** Nomes reais têm acento e
+pontuação ("Maternal II — manhã"), o que gera frustração no teclado do celular
+sem aumentar a segurança da confirmação.
+
+A caixa também informa o custo exato da ação — "o cadastro e as 14 anotações
+serão apagados" — porque é esse número que embasa a decisão.
+
+---
+
+## 14. Exclusão em duas etapas
+
+**Decisão.** Tirar da lista e excluir são ações separadas. A exclusão
+definitiva só existe dentro da lista de crianças já arquivadas.
+
+**Motivo.** Separa o caso comum (criança saiu da turma) do caso raro e
+irreversível (apagar o histórico). O caminho frequente nunca passa perto do
+botão perigoso.
+
+A mesma lógica vale para turmas, mas com proteção no banco: a chave
+estrangeira usa `ON DELETE RESTRICT`, então o Postgres recusa excluir turma
+com crianças mesmo que a interface falhe.

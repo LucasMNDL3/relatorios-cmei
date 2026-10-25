@@ -1,9 +1,11 @@
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from './supabase'
 import { quando, primeiraLetra } from './util'
-import { SetaEsquerda, Alerta } from './icones'
+import { SetaEsquerda, Alerta, Copiar } from './icones'
 
-export default function Crianca({ crianca, aoVoltar, aoMudarCrianca }) {
+const SEM_TURMA = '__sem_turma__'
+
+export default function Crianca({ crianca, turmas = [], aoVoltar, aoMudarCrianca }) {
   const [anotacoes, setAnotacoes] = useState([])
   const [texto, setTexto] = useState('')
   const [carregando, setCarregando] = useState(true)
@@ -13,11 +15,33 @@ export default function Crianca({ crianca, aoVoltar, aoMudarCrianca }) {
   const [editandoId, setEditandoId] = useState(null)
   const [textoEdicao, setTextoEdicao] = useState('')
 
-  const [renomeando, setRenomeando] = useState(false)
+  const [editandoCadastro, setEditandoCadastro] = useState(false)
   const [nomeNovo, setNomeNovo] = useState(crianca.nome)
+  const [matriculaNova, setMatriculaNova] = useState(crianca.matricula || '')
+  const [turmaNova, setTurmaNova] = useState(crianca.turma_id || SEM_TURMA)
+
+  const [copiado, setCopiado] = useState(null)
 
   const campo = useRef(null)
   const chaveRascunho = `rascunho:${crianca.id}`
+
+  async function copiarTexto(texto, id) {
+    try {
+      await navigator.clipboard.writeText(texto)
+    } catch {
+      // navegador antigo ou página sem HTTPS: usa o caminho manual
+      const area = document.createElement('textarea')
+      area.value = texto
+      area.style.position = 'fixed'
+      area.style.opacity = '0'
+      document.body.appendChild(area)
+      area.select()
+      try { document.execCommand('copy') } catch { /* não deu, segue */ }
+      document.body.removeChild(area)
+    }
+    setCopiado(id)
+    setTimeout(() => setCopiado(null), 2000)
+  }
 
   // recupera rascunho não enviado
   useEffect(() => {
@@ -84,12 +108,29 @@ export default function Crianca({ crianca, aoVoltar, aoMudarCrianca }) {
     aoMudarCrianca?.()
   }
 
-  async function salvarNome() {
-    const novo = nomeNovo.trim()
-    if (!novo) return
-    await supabase.from('criancas').update({ nome: novo }).eq('id', crianca.id)
-    crianca.nome = novo
-    setRenomeando(false)
+  async function salvarCadastro() {
+    const nome = nomeNovo.trim()
+    const matricula = matriculaNova.trim()
+    if (!nome) return
+
+    const turma_id = turmaNova === SEM_TURMA ? null : turmaNova
+    setErro('')
+
+    const { error } = await supabase.from('criancas')
+      .update({ nome, matricula: matricula || null, turma_id })
+      .eq('id', crianca.id)
+
+    if (error) {
+      setErro(error.code === '23505'
+        ? `A matrícula ${matricula} já está cadastrada para outra criança.`
+        : 'Não foi possível salvar. Tente de novo.')
+      return
+    }
+
+    crianca.nome = nome
+    crianca.matricula = matricula || null
+    crianca.turma_id = turma_id
+    setEditandoCadastro(false)
     aoMudarCrianca?.()
   }
 
@@ -103,44 +144,92 @@ export default function Crianca({ crianca, aoVoltar, aoMudarCrianca }) {
     aoVoltar()
   }
 
+  const turmaAtual = turmas.find(t => t.id === crianca.turma_id)
+
   return (
     <div className="pagina">
       <button className="voltar" onClick={aoVoltar}>
         <SetaEsquerda /> Todas as crianças
       </button>
 
-      <div className="cabecalho-crianca">
-        <span className="inicial" aria-hidden="true">{primeiraLetra(crianca.nome)}</span>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          {renomeando ? (
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              <input type="text" value={nomeNovo} autoFocus
-                     style={{ flex: 1, minWidth: 180 }}
-                     onChange={e => setNomeNovo(e.target.value)}
-                     onKeyDown={e => { if (e.key === 'Enter') salvarNome() }} />
-              <button className="botao contorno menor" onClick={salvarNome}>Salvar</button>
-              <button className="botao contorno menor"
-                      onClick={() => { setRenomeando(false); setNomeNovo(crianca.nome) }}>
-                Cancelar
-              </button>
+      {editandoCadastro ? (
+        <div className="painel" style={{ marginBottom: 26 }}>
+          <div className="campo">
+            <label htmlFor="ed-nome">Nome da criança</label>
+            <input type="text" id="ed-nome" value={nomeNovo} autoFocus
+                   onChange={e => { setNomeNovo(e.target.value); setErro('') }} />
+          </div>
+
+          <div className="campo">
+            <label htmlFor="ed-matricula">
+              Matrícula <span className="opcional-rotulo">— pode preencher depois</span>
+            </label>
+            <input type="text" id="ed-matricula" value={matriculaNova}
+                   placeholder="Ex.: 2026-0142"
+                   onChange={e => { setMatriculaNova(e.target.value); setErro('') }} />
+          </div>
+
+          {turmas.length > 0 && (
+            <div className="campo">
+              <label htmlFor="ed-turma">Turma</label>
+              <select id="ed-turma" value={turmaNova}
+                      onChange={e => setTurmaNova(e.target.value)}>
+                <option value={SEM_TURMA}>Sem turma</option>
+                {turmas.map(t => (
+                  <option key={t.id} value={t.id}>{t.nome}</option>
+                ))}
+              </select>
             </div>
-          ) : (
-            <>
-              <h1>{crianca.nome}</h1>
-              <p>
-                {anotacoes.length === 0 ? 'nenhuma anotação ainda'
-                  : anotacoes.length === 1 ? '1 anotação'
-                  : `${anotacoes.length} anotações`}
-              </p>
-            </>
+          )}
+
+          <div className="acoes">
+            <button className="botao cheio" onClick={salvarCadastro}
+                    disabled={!nomeNovo.trim()}>
+              Salvar
+            </button>
+            <button className="botao contorno"
+                    onClick={() => {
+                      setEditandoCadastro(false)
+                      setNomeNovo(crianca.nome)
+                      setMatriculaNova(crianca.matricula || '')
+                      setTurmaNova(crianca.turma_id || SEM_TURMA)
+                      setErro('')
+                    }}>
+              Cancelar
+            </button>
+          </div>
+          {!nomeNovo.trim() && (
+            <p className="nota-form">O nome é obrigatório.</p>
           )}
         </div>
-        {!renomeando && (
-          <button className="botao contorno menor" onClick={() => setRenomeando(true)}>
-            Trocar nome
+      ) : (
+        <div className="cabecalho-crianca">
+          <span className="inicial" aria-hidden="true">{primeiraLetra(crianca.nome)}</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h1>{crianca.nome}</h1>
+            <p>
+              {crianca.matricula
+                ? <span className="matricula">{crianca.matricula}</span>
+                : <span className="sem-matricula">sem matrícula</span>}
+              {turmaAtual && <>{turmaAtual.nome} · </>}
+              {anotacoes.length === 0 ? 'nenhuma anotação ainda'
+                : anotacoes.length === 1 ? '1 anotação'
+                : `${anotacoes.length} anotações`}
+            </p>
+          </div>
+          <button className="botao contorno menor"
+                  onClick={() => setEditandoCadastro(true)}>
+            Editar cadastro
           </button>
-        )}
-      </div>
+        </div>
+      )}
+
+      {!crianca.matricula && !editandoCadastro && (
+        <div className="pendencia" style={{ marginBottom: 22 }}>
+          Esta criança ainda não tem matrícula. Quando tiver o número em mãos,
+          use "Editar cadastro" para preencher.
+        </div>
+      )}
 
       {erro && <div className="aviso" role="alert"><Alerta /><span>{erro}</span></div>}
 
@@ -208,6 +297,12 @@ export default function Crianca({ crianca, aoVoltar, aoMudarCrianca }) {
             <>
               <p>{a.texto}</p>
               <div className="acoes">
+                <button className="botao contorno menor"
+                        onClick={() => copiarTexto(a.texto, a.id)}>
+                  {copiado === a.id
+                    ? <>Copiado</>
+                    : <><Copiar /> Copiar</>}
+                </button>
                 <button className="botao contorno menor"
                         onClick={() => { setEditandoId(a.id); setTextoEdicao(a.texto) }}>
                   Editar

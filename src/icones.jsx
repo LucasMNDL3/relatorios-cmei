@@ -37,6 +37,40 @@ export function SetaDireita() {
   )
 }
 
+export function TresPontos() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+      <circle cx="9" cy="3.6" r="1.6" fill="currentColor" />
+      <circle cx="9" cy="9" r="1.6" fill="currentColor" />
+      <circle cx="9" cy="14.4" r="1.6" fill="currentColor" />
+    </svg>
+  )
+}
+
+export function Copiar() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+      <rect x="6.2" y="6.2" width="9.3" height="9.3" rx="2"
+            stroke="currentColor" strokeWidth="1.6" />
+      <path d="M11.8 6.2V4.5a2 2 0 0 0-2-2H4.5a2 2 0 0 0-2 2v5.3a2 2 0 0 0 2 2h1.7"
+            stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+export function Grupo() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="9" cy="8" r="3.2" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M3.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5" stroke="currentColor"
+            strokeWidth="1.8" strokeLinecap="round" />
+      <circle cx="17" cy="9.5" r="2.4" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M16 15.2c2.4.2 4.2 2 4.2 3.8" stroke="currentColor"
+            strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  )
+}
+
 export function Alerta() {
   return (
     <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"
