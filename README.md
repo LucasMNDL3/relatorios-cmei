@@ -7,7 +7,7 @@ Feito para uso real: minha mãe é professora de CMEI e precisava substituir o
 caderno de anotações por algo que não se perdesse e organizasse o histórico
 de cada criança ao longo do ano.
 
-**[Ver aplicação](#)** · _substituir pelo link do deploy_
+**[Ver aplicação](https://relatorios-cmei.vercel.app)**
 
 ---
 
